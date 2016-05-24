@@ -10,7 +10,9 @@
   (when chan
     (close! chan)))
 
-(defn- inflater [data]
+(defn- inflater
+  "Decompresses data from Relay and returns JSON payload as Clojure Map."
+  [data]
   (when data
     (let [inflater (Inflater.)
           decompressed (byte-array (* (alength data) 16))
@@ -22,7 +24,9 @@
         (String. output "UTF-8")
         (parse-string true)))))
 
-(defn- market-data [relay buffer-size]
+(defn- market-data
+  "Subscribes to specified EMDR Relay, returning channel with new market data."
+  [relay buffer-size]
   (let [out (chan buffer-size)
         context (ZMQ/context 1)
         subscriber (.socket context ZMQ/SUB)]
@@ -55,7 +59,7 @@
               "orders" (>!! order-chan c)
               "history" (>!! history-chan c))
             (recur))
-          (println "Market data channel has been closed!!"))))))
+          (log/info "Stopping consumer because Market Data connection lost."))))))
 
 (defrecord EMDRClient [relay n-consumers order-chan history-chan]
   comp/Lifecycle
