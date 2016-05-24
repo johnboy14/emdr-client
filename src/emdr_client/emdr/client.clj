@@ -48,32 +48,29 @@
 (defn start-emdr-consumers
   "Start the specified number of threads, to consume the EMDR relay and place
   order data on order-chan and history data on history-chan"
-  [market-data-chan order-chan history-chan n-consumers]
+  [market-data-chan mkdata-chan n-consumers]
   (dotimes [_ n-consumers]
     (thread
       (loop []
         (if-let [c (inflater (<!! market-data-chan))]
           (do
             (log/infof "ResultType = %s" (:resultType c))
-            (case (:resultType c)
-              "orders" (>!! order-chan c)
-              "history" (>!! history-chan c))
+            (>!! mkdata-chan c)
             (recur))
           (log/info "Stopping consumer because Market Data connection lost."))))))
 
-(defrecord EMDRClient [relay n-consumers order-chan history-chan]
+(defrecord EMDRClient [relay n-consumers mkdata-chan]
   comp/Lifecycle
   (start [comp]
     (log/infof "Starting EMDR Client with %d consumers of %s" n-consumers relay)
     (let [m-chan (market-data relay 10)]
-      (start-emdr-consumers m-chan (:chan order-chan) (:chan history-chan) n-consumers)
+      (start-emdr-consumers m-chan (:chan mkdata-chan) n-consumers)
       (assoc comp :market-data-chan m-chan)))
   (stop [comp]
     (log/infof "Shutting down EMDR Client")
     (->
       (update-in comp [:market-data-chan] close-chan)
-      (update-in [:order-chan :chan] close-chan)
-      (update-in [:history-chan :chan] close-chan))))
+      (update-in [:mkdata-chan :chan] close-chan))))
 
 (defn new-emdr-client [relay n-consumers]
   (map->EMDRClient {:relay relay :n-consumers n-consumers}))

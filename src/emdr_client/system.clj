@@ -4,8 +4,7 @@
 
 (defn new-system []
   (component/system-map
-    :emdr-order-chan (new-channel 10)
-    :emdr-history-chan (new-channel 10)
+    :emdr-mkdata-chan (new-channel 10)
     :emdr-client (component/using
                    (new-emdr-client "tcp://relay-us-central-1.eve-emdr.com:8050" 10)
-                   {:order-chan :emdr-order-chan :history-chan :emdr-history-chan})))
+                   {:mkdata-chan :emdr-mkdata-chan})))
