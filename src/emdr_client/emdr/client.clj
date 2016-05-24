@@ -2,13 +2,10 @@
   (:require [com.stuartsierra.component :as comp]
             [clojure.core.async :refer [chan close! thread >!! <!!]]
             [clojure.tools.logging :as log]
-            [cheshire.core :refer [parse-string]])
+            [cheshire.core :refer [parse-string]]
+            [emdr-client.common.utils :refer [close-chan]])
   (:import (org.zeromq ZMQ)
            (java.util.zip Inflater)))
-
-(defn- close-chan [chan]
-  (when chan
-    (close! chan)))
 
 (defn- inflater
   "Decompresses data from Relay and returns JSON payload as Clojure Map."
