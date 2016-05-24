@@ -11,6 +11,7 @@
     (let [mkdata-mult (mult (:chan mkdata-chan))]
       (tap mkdata-mult (:order-chan rethink-chans))
       (tap mkdata-mult (:history-chan rethink-chans))
+      (log/info "Started Switchboard")
       (assoc comp :mkdata-mult mkdata-mult)))
   (stop [comp]
     (log/info "Shutting down Switchboard")
