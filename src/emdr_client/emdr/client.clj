@@ -83,5 +83,3 @@
 
 (defn new-channel [buffer-size]
   (map->Channel {:buffer-size buffer-size}))
-
-
