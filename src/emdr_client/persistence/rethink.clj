@@ -7,6 +7,18 @@
             [rethinkdb.query :as r]
             [rethinkdb.core :as rc]))
 
+(defn- initialize-db [conn db tables]
+  (let [existing-tables (->
+                          (r/db db)
+                          (r/table-list)
+                          (r/run conn)
+                          set)]
+    (doseq [t tables]
+      (if-not (existing-tables t)
+        (do
+          (log/info "Creating Tables " tables " in " db)
+          (-> (r/db db) (r/table-create t) (r/run conn) r/wait))))))
+
 (defn- close-rethink-conn [conn]
   (when-not (= :closed conn)
     (rc/close conn)))
@@ -42,6 +54,7 @@
   (start [comp]
     (log/info "Starting RethinkDB Consumer")
     (let [conn (r/connect :host host :port port)]
+      (initialize-db conn "emdr" ["orders" "history"])
       (start-rethinkdb-writers conn "emdr" "orders" (:order-chan rethink-chans) n-writers)
       (start-rethinkdb-writers conn "emdr" "history" (:history-chan rethink-chans) n-writers)
       (assoc comp :conn conn)))
@@ -52,7 +65,7 @@
       (update-in [:rethink-chans :order-chan] close-chan)
       (update-in [:rethink-chans :history-chan] close-chan))))
 
-(defn new-rethinkDB-consumer [host port n-writers]
+(defn new-rethinkDB-writers [host port n-writers]
   (map->RethinkDBWriter {:host host :port port :n-writers n-writers}))
 
 (defrecord RethinkDBChannels [buffer-size]

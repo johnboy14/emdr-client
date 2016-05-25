@@ -2,7 +2,7 @@
   (:require [com.stuartsierra.component :as component]
             [emdr-client.emdr.client :refer [new-channel new-emdr-client]]
             [emdr-client.persistence.rethink :refer [new-rethinkdb-channels
-                                                     new-rethinkDB-consumer]]
+                                                     new-rethinkDB-writers]]
             [emdr-client.switchboard.switchboard :refer [new-switchboard]]))
 
 (defn new-system []
@@ -17,5 +17,5 @@
                    (new-emdr-client "tcp://relay-us-central-1.eve-emdr.com:8050" 10)
                    {:mkdata-chan :emdr-mkdata-chan})
     :rethinkdb-consumer (component/using
-                          (new-rethinkDB-consumer "127.0.0.1" 28015 10)
+                          (new-rethinkDB-writers "127.0.0.1" 28015 10)
                           {:rethink-chans :rethinkdb-chans})))
