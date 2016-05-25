@@ -7,17 +7,24 @@
             [rethinkdb.query :as r]
             [rethinkdb.core :as rc]))
 
-(defn- initialize-db [conn db tables]
+(defn- initialize-tables [conn db tables]
   (let [existing-tables (->
                           (r/db db)
                           (r/table-list)
                           (r/run conn)
                           set)]
     (doseq [t tables]
-      (if-not (existing-tables t)
+      (when-not (existing-tables t)
         (do
           (log/info "Creating Tables " tables " in " db)
           (-> (r/db db) (r/table-create t) (r/run conn) r/wait))))))
+
+(defn- initialize-db [conn db tables]
+  (let [d ((-> (r/db-list) (r/run conn) set) db)]
+    (when-not d
+      (log/info "Create Database " db)
+      (-> (r/db-create db) (r/run conn) r/wait))
+    (initialize-tables conn db tables)))
 
 (defn- close-rethink-conn [conn]
   (when-not (= :closed conn)
