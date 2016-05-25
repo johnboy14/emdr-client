@@ -17,5 +17,5 @@
                    (new-emdr-client "tcp://relay-us-central-1.eve-emdr.com:8050" 10)
                    {:mkdata-chan :emdr-mkdata-chan})
     :rethinkdb-consumer (component/using
-                          (new-rethinkDB-consumer)
+                          (new-rethinkDB-consumer "127.0.0.1" 28015 10)
                           {:rethink-chans :rethinkdb-chans})))

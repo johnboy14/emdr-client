@@ -4,7 +4,12 @@
             [clojure.core.async :refer [chan close! thread <!! >!!]]
             [emdr-client.common.utils :refer [close-chan order? history?
                                               result-transducer]]
-            [rethinkdb.query :as r]))
+            [rethinkdb.query :as r]
+            [rethinkdb.core :as rc]))
+
+(defn- close-rethink-conn [conn]
+  (when-not (= :closed conn)
+    (rc/close conn)))
 
 (defn- insert-table
   [conn db table data]
@@ -31,22 +36,23 @@
             (recur))
           (log/info "Stopping consumer because Market Data connection lost."))))))
 
-(defrecord RethinkDB [rethink-chans]
+(defrecord RethinkDBWriter [host port n-writers rethink-chans]
   comp/Lifecycle
   (start [comp]
     (log/info "Starting RethinkDB Consumer")
-    (let [conn (r/connect :host "127.0.0.1" :port 28015)]
-      (start-rethinkdb-writers conn "emdr" "orders" (:order-chan rethink-chans) 5)
-      (start-rethinkdb-writers conn "emdr" "history" (:history-chan rethink-chans) 5)
+    (let [conn (r/connect :host host :port port)]
+      (start-rethinkdb-writers conn "emdr" "orders" (:order-chan rethink-chans) n-writers)
+      (start-rethinkdb-writers conn "emdr" "history" (:history-chan rethink-chans) n-writers)
       (assoc comp :conn conn)))
   (stop [comp]
     (log/info "Shutting down RethinkDB Consumer")
     (->
-      (update-in comp [:rethink-chans :order-chan] close-chan)
+      (update-in comp [:conn] close-rethink-conn)
+      (update-in [:rethink-chans :order-chan] close-chan)
       (update-in [:rethink-chans :history-chan] close-chan))))
 
-(defn new-rethinkDB-consumer []
-  (map->RethinkDB {}))
+(defn new-rethinkDB-consumer [host port n-writers]
+  (map->RethinkDBWriter {:host host :port port :n-writers n-writers}))
 
 (defrecord RethinkDBChannels [buffer-size]
   comp/Lifecycle
