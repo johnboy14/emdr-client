@@ -1,62 +1,46 @@
 (ns emdr-client.persistence.rethink
   (:require [com.stuartsierra.component :as comp]
             [clojure.tools.logging :as log]
-            [clojure.core.async :as async :refer [chan close! thread <!! >!!
+            [clojure.core.async :refer [chan close! thread <!! >!!
                                                   go <! >!]]
-            [emdr-client.common.utils :refer [close-chan]]
-            [rethinkdb.query :as r])
-  (:import (java.util UUID)))
+            [emdr-client.common.utils :refer [close-chan order? history?
+                                              result-transducer]]
+            [rethinkdb.query :as r]))
 
-(defn- order? [msg]
-  (if (= (:resultType msg) "orders")
-    true))
 
-(defn- history? [msg]
-  (if (= (:resultType msg) "history")
-    true))
-
-(defn zip-rowset [{:keys [columns rowsets resultType]}]
-  (loop [rowset rowsets
-         acc []]
-    (if (seq rowset)
-      (->>
-        (map #(->
-               (zipmap columns %)
-               (assoc :resultType resultType :id (.toString (UUID/randomUUID)))
-               (merge (select-keys (first rowset) [:regionID :typeID]))
-               clojure.walk/keywordize-keys)
-         (:rows (first rowset)))
-        (conj acc)
-        (recur (rest rowset)))
-      (flatten acc))))
-
-(def result-transducer
-  (fn [pred]
-    (comp
-      (filter pred)
-      (map zip-rowset))))
 
 (defn- insert-table
-  [conn db table data timeout]
-  (-> (r/db db)
-    (r/table table)
-    (r/insert data)
-    (r/run conn timeout)))
+  [conn db table data]
+  (try
+    (->
+      (r/db db)
+      (r/table table)
+      (r/insert data)
+      (r/run conn))
+    (catch Exception e
+      (log/error (str "Error occured writing payload to " table " with " data " Exception: " e))))
+
+  (defn start-rethinkdb-writers
+    "Start the specified number of threads, to write to RethinkDB"
+    [conn db table channel n-consumers]
+    (dotimes [_ n-consumers]
+      (thread
+        (loop []
+          (if-let [c (<!! channel)]
+            (if (seq c)
+              (do
+                (insert-table conn db table c)
+                (recur))
+              (recur))
+            (log/info "Stopping consumer because Market Data connection lost.")))))))
 
 (defrecord RethinkDB [rethink-chans]
   comp/Lifecycle
   (start [comp]
     (log/info "Starting RethinkDB Consumer")
     (let [conn (r/connect :host "127.0.0.1" :port 28015)]
-      (thread
-        (loop []
-          (if-let [c (<!! (:order-chan rethink-chans))]
-            (if (seq c)
-              (do
-                (insert-table conn "emdr" "orders" c 2)
-                (recur))
-              (recur))
-            (log/info "Stopping consumer because Market Data connection lost."))))
+      (start-rethinkdb-writers conn "emdr" "orders" (:order-chan rethink-chans) 5)
+      (start-rethinkdb-writers conn "emdr" "history" (:history-chan rethink-chans) 5)
       (assoc comp :conn conn)))
   (stop [comp]
     (log/info "Shutting down RethinkDB Consumer")
