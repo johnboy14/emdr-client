@@ -1,13 +1,10 @@
 (ns emdr-client.persistence.rethink
   (:require [com.stuartsierra.component :as comp]
             [clojure.tools.logging :as log]
-            [clojure.core.async :refer [chan close! thread <!! >!!
-                                                  go <! >!]]
+            [clojure.core.async :refer [chan close! thread <!! >!!]]
             [emdr-client.common.utils :refer [close-chan order? history?
                                               result-transducer]]
             [rethinkdb.query :as r]))
-
-
 
 (defn- insert-table
   [conn db table data]
@@ -18,21 +15,21 @@
       (r/insert data)
       (r/run conn))
     (catch Exception e
-      (log/error (str "Error occured writing payload to " table " with " data " Exception: " e))))
+      (log/error (str "Error occured writing payload to " table " with " data " Exception: " e)))))
 
-  (defn start-rethinkdb-writers
-    "Start the specified number of threads, to write to RethinkDB"
-    [conn db table channel n-consumers]
-    (dotimes [_ n-consumers]
-      (thread
-        (loop []
-          (if-let [c (<!! channel)]
-            (if (seq c)
-              (do
-                (insert-table conn db table c)
-                (recur))
+(defn- start-rethinkdb-writers
+  "Start the specified number of threads, to write to RethinkDB"
+  [conn db table channel n-consumers]
+  (dotimes [_ n-consumers]
+    (thread
+      (loop []
+        (if-let [c (<!! channel)]
+          (if (seq c)
+            (do
+              (insert-table conn db table c)
               (recur))
-            (log/info "Stopping consumer because Market Data connection lost.")))))))
+            (recur))
+          (log/info "Stopping consumer because Market Data connection lost."))))))
 
 (defrecord RethinkDB [rethink-chans]
   comp/Lifecycle
