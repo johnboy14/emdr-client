@@ -13,14 +13,15 @@
 
 (defn- insert-table
   [conn db table data]
-  (try
-    (->
-      (r/db db)
-      (r/table table)
-      (r/insert data)
-      (r/run conn))
-    (catch Exception e
-      (log/error (str "Error occured writing payload to " table " with " data " Exception: " e)))))
+  (when (seq data)
+    (try
+      (->
+        (r/db db)
+        (r/table table)
+        (r/insert data)
+        (r/run conn))
+      (catch Exception e
+        (log/error (str "Error occured writing payload to " table " with " data " Exception: " e))))))
 
 (defn- start-rethinkdb-writers
   "Start the specified number of threads, to write to RethinkDB"
