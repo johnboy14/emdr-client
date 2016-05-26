@@ -33,7 +33,7 @@
 (defn- insert-table
   [conn db table data]
   (when (seq data)
-    (log/infof "Writing %d records to %s" (count data) table)
+    (log/infof "Writing %d records to table %s" (count data) table)
     (try
       (->
         (r/db db)
@@ -53,7 +53,8 @@
           (if (seq c)
             (do
               (insert-table conn db table c)
-              (recur)))
+              (recur))
+            (recur))
           (log/info "Stopping consumer because Market Data connection lost."))))))
 
 (defrecord RethinkDBWriter [host port n-writers rethink-chans]
