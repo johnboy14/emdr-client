@@ -7,8 +7,8 @@
 
 (defn new-system []
   (component/system-map
-    :emdr-mkdata-chan (new-channel 10)
-    :rethinkdb-chans (new-rethinkdb-channels 10)
+    :emdr-mkdata-chan (new-channel 100)
+    :rethinkdb-chans (new-rethinkdb-channels 100)
     :switchboard (component/using
                    (new-switchboard)
                    {:mkdata-chan :emdr-mkdata-chan

@@ -51,7 +51,6 @@
       (loop []
         (if-let [c (inflater (<!! market-data-chan))]
           (do
-            (log/infof "ResultType = %s" (:resultType c))
             (>!! mkdata-chan c)
             (recur))
           (log/info "Stopping consumer because Market Data connection lost."))))))
