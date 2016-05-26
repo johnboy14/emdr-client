@@ -21,7 +21,7 @@
       (->>
         (map #(->
                (zipmap columns %)
-               (assoc :resultType resultType :id (.toString (UUID/randomUUID)))
+               (assoc :resultType resultType)
                (merge (select-keys (first rowset) [:regionID :typeID]))
                clojure.walk/keywordize-keys)
           (:rows (first rowset)))
